@@ -1,11 +1,12 @@
-pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
 
 ##### Data Set ######
 
 #bank = read.csv("E:/UTSA/DA6813 Data Analytics Applications/Case Study 1/bank-additional.csv", sep = ";")
-bank = read.csv("D:/UTSA/DA6813 Data Analytics Applications/Case Study 1/bank-additional.csv", sep = ";")
+bank = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/bank-additional.csv'), sep = ';'))
+
 str(bank)
 
 #Turning character variables into factors
