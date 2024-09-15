@@ -1,6 +1,4 @@
-library(ROCR)
-library(car)
-library(tidyverse)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
 
@@ -20,8 +18,43 @@ bank[fac_vars] = lapply(bank[fac_vars],as.factor)
 plot(bank$y)
 
 #visualization
-#Zach
 
+# boxplots for numeric variables
+
+box_age = ggplot(bank, aes(y, age)) +
+  geom_boxplot()
+
+box_duration = ggplot(bank, aes(y, duration)) +
+  geom_boxplot()
+
+box_campaign = ggplot(bank, aes(y, campaign)) +
+  geom_boxplot()
+
+box_pdays = ggplot(bank, aes(y, pdays)) +
+  geom_boxplot()
+
+box_previous = ggplot(bank, aes(y, previous)) +
+  geom_boxplot()
+
+grid.arrange(box_age, box_duration, box_campaign, box_pdays, box_previous,
+             ncol = 4)
+
+# side-by-side bar plots for categorical variables
+
+p = ggplot(bank) +
+  facet_wrap(~ y) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+p + geom_bar(aes(x = job))
+p + geom_bar(aes(x = marital))
+p + geom_bar(aes(x = education))
+p + geom_bar(aes(x = default))
+p + geom_bar(aes(x = housing))
+p + geom_bar(aes(x = loan))
+p + geom_bar(aes(x = contact))
+p + geom_bar(aes(x = month))
+p + geom_bar(aes(x = day_of_week))
+p + geom_bar(aes(x = poutcome))
 
 #Multicollinearity
 vif(lm(bank[,c(1,11:13,15:19)])) #3 numeric columns with high VIF (i.e. >10) : emp.var.rate, euribor3m, and nr.employed
