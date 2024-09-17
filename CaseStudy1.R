@@ -1,4 +1,4 @@
-pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
 
@@ -105,6 +105,17 @@ test$PredSur = ifelse(test$PredProb >= 0.85, "yes", "no") #Adjusted prob to incr
 caret::confusionMatrix(as.factor(test$y), as.factor(test$PredSur)) #Comparing observed to predicted
  
 
+### Random Forest Model ###
+set.seed(1)
+rf_model = train(y ~ . -pdays, data = train, method = "rf", trControl = trainControl(method = "cv", number = 10))
+print(rf_model)
+
+# Predictions for random forest
+test$RF_Pred = predict(rf_model, newdata = test)
+
+# Confusion matrix for random forest
+caret::confusionMatrix(as.factor(test$y), as.factor(test$RF_Pred))
+
 #########################################################################
 #############  Model after removing unknown observations ################
 #########################################################################
@@ -159,4 +170,13 @@ test$PredSur = ifelse(test$PredProb >= 0.85, "yes", "no") #Adjusted prob to incr
 # Finally, we will use the command "confusionMatrix" from the package caret to get accuracy of the model prediction. 
 caret::confusionMatrix(as.factor(test$y), as.factor(test$PredSur)) #Comparing observed to predicted
 
+### Random Forest Model ###
+set.seed(1)
+rf_model = train(y ~ . -pdays, data = train, method = "rf", trControl = trainControl(method = "cv", number = 10))
+print(rf_model)
 
+# Predictions for random forest
+test$RF_Pred = predict(rf_model, newdata = test)
+
+# Confusion matrix for random forest
+caret::confusionMatrix(as.factor(test$y), as.factor(test$RF_Pred))
