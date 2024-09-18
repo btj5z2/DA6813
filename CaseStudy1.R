@@ -37,8 +37,25 @@ box_pdays = ggplot(bank, aes(y, pdays)) +
 box_previous = ggplot(bank, aes(y, previous)) +
   geom_boxplot()
 
+box_emp.var.rate = ggplot(bank, aes(y, emp.var.rate)) +
+  geom_boxplot()
+
+box_cons.price.idx = ggplot(bank, aes(y, cons.price.idx)) +
+  geom_boxplot()
+
+box_cons.conf.idx = ggplot(bank, aes(y, cons.conf.idx)) +
+  geom_boxplot()
+
+box_euribor3m = ggplot(bank, aes(y, euribor3m)) +
+  geom_boxplot()
+
+box_nr.employed = ggplot(bank, aes(y, nr.employed)) +
+  geom_boxplot()
+
 grid.arrange(box_age, box_duration, box_campaign, box_pdays, box_previous,
-             ncol = 4)
+             box_emp.var.rate, box_cons.price.idx, box_cons.conf.idx, box_euribor3m,
+             box_nr.employed,
+             ncol = 5)
 
 # side-by-side bar plots for categorical variables
 
@@ -59,7 +76,6 @@ p + geom_bar(aes(x = poutcome))
 
 #Multicollinearity
 vif(lm(bank[,c(1,11:13,15:19)])) #3 numeric columns with high VIF (i.e. >10) : emp.var.rate, euribor3m, and nr.employed
-
 
 #Missing values
 lapply(bank,unique)
@@ -149,8 +165,6 @@ bank = subset(bank, !(bank$education == "unknown"))
 bank = subset(bank, !(bank$default == "unknown")) 
 bank = subset(bank, !(bank$housing == "unknown")) 
 bank = subset(bank, !(bank$loan == "unknown")) 
-
-
 
 #Train/Test Split
 set.seed(1)
