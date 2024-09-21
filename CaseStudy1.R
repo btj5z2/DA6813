@@ -17,6 +17,10 @@ bank[fac_vars] = lapply(bank[fac_vars],as.factor)
 
 #Balanced? No.
 plot(bank$y)
+ggplot(bank, aes(y)) +
+  geom_bar() +
+  labs(caption = "Figure 5.1: Despite the data being imbalanced, the bar plots show similar variance of error for variables.")
+  theme(plot.caption = element_text(hjust = 0.5))
 
 #visualization
 
@@ -55,7 +59,8 @@ box_nr.employed = ggplot(bank, aes(y, nr.employed)) +
 grid.arrange(box_age, box_duration, box_campaign, box_pdays, box_previous,
              box_emp.var.rate, box_cons.price.idx, box_cons.conf.idx, box_euribor3m,
              box_nr.employed,
-             ncol = 5)
+             ncol = 5,
+             bottom = 'Figure 5.2: Boxplots of Numerical Values')
 
 # side-by-side bar plots for categorical variables
 
@@ -73,6 +78,12 @@ p + geom_bar(aes(x = contact))
 p + geom_bar(aes(x = month))
 p + geom_bar(aes(x = day_of_week))
 p + geom_bar(aes(x = poutcome))
+
+grid.arrange(p + geom_bar(aes(x = job)), p + geom_bar(aes(x = marital)),
+             p + geom_bar(aes(x = education)), p + geom_bar(aes(x = default)),
+             p + geom_bar(aes(x = housing)), p + geom_bar(aes(x = loan)),
+             ncol = 2,
+             bottom = 'Figure 5.3: Bar charts of variables with "unknown" observations')
 
 #Multicollinearity
 vif(lm(bank[,c(1,11:13,15:19)])) #3 numeric columns with high VIF (i.e. >10) : emp.var.rate, euribor3m, and nr.employed
