@@ -83,6 +83,32 @@ test$svm_class <- ifelse(svm.prob >= 0.5, 1, 0)
 # Evaluate SVM predictions
 caret::confusionMatrix(as.factor(test$Choice), as.factor(test$svm_class))
 
+## LR Model
+train$Choice <- as.numeric(as.character(train$Choice))  # it's a factor stored as numbers
+train$Gender = as.numeric(as.character(train$Gender))
+test$Choice = as.numeric(as.character(test$Choice))
+test$Gender = as.numeric(as.character(test$Gender))
+m1 = lm(Choice ~., data = train)
+vif(m1)
+m2 = lm(Choice ~ . -Last_purchase, data = train)
+vif(m2)
+m3 <- lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, 
+         data = train)
+vif(m3)
+
+summary(m3)
+
+m4 = lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
+        data = train)
+summary(m4)
+predictions = predict(m4, newdata = test, type = "response")
+##when using predict function make sure it's going to new data
+
+#Measures
+mse = mean((test$Choice - predictions)^2)
+mae = mean(abs(test$Choice - predictions))
+me = mean(test$Choice - predictions)
+mape =  mean(abs(test$Choice - predictions)/test$Choice)*100
 
 
 
