@@ -1,4 +1,4 @@
-pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl, e1071)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
 
@@ -57,15 +57,32 @@ log.model4 = glm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Co
                  + P_Art , data = train, family = binomial) #Remove first_purchased
 summary(log.model4)
 
-
-
 #Predictions 
 test$PredProb = predict.glm(log.model4, newdata = test, type = "response")
 test$PredSur = ifelse(test$PredProb >= 0.5, 1, 0) # Create new variable converting probabilities to 1s and 0s
 
-
-# "ConfusionMatrix" to get accuracy of the model prediction
+# "Confusion Matrix" to get accuracy of the model prediction
 caret::confusionMatrix(as.factor(test$Choice), as.factor(test$PredSur)) #Comparing observed to predicted
+
+### Adding SVM Model ###
+
+# SVM requires normalized numerical variables
+# Refit SVM model using e1071 package
+svm.model <- svm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
+                        data = train, 
+                        kernel = "radial",  
+                        probability = TRUE)
+
+# Predict using the test data
+test$svm_pred <- predict(svm.model, test, probability = TRUE)
+svm.prob <- attr(predict(svm.model, test, probability = TRUE), "probabilities")[,2]
+
+# Classify predictions based on a threshold of 0.5
+test$svm_class <- ifelse(svm.prob >= 0.5, 1, 0)
+
+# Evaluate SVM predictions
+caret::confusionMatrix(as.factor(test$Choice), as.factor(test$svm_class))
+
 
 
 
