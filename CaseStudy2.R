@@ -1,6 +1,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl, e1071)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
+#Sample training data set like done in titanic example
 
 ##### Data Set ######
 url1 <- "https://raw.githubusercontent.com/btj5z2/DA6813/main/BBBC-Train.xlsx"
@@ -59,10 +60,11 @@ summary(log.model4)
 
 #Predictions 
 test$PredProb = predict.glm(log.model4, newdata = test, type = "response")
-test$PredSur = ifelse(test$PredProb >= 0.5, 1, 0) # Create new variable converting probabilities to 1s and 0s
+test$PredSur = ifelse(test$PredProb >= 0.3, 1, 0) # Create new variable converting probabilities to 1s and 0s
 
 # "Confusion Matrix" to get accuracy of the model prediction
-caret::confusionMatrix(as.factor(test$Choice), as.factor(test$PredSur)) #Comparing observed to predicted
+caret::confusionMatrix(as.factor(test$PredSur), as.factor(test$Choice) ) #Comparing observed to predicted
+
 
 ### Adding SVM Model ###
 
@@ -83,33 +85,30 @@ test$svm_class <- ifelse(svm.prob >= 0.5, 1, 0)
 # Evaluate SVM predictions
 caret::confusionMatrix(as.factor(test$Choice), as.factor(test$svm_class))
 
-## LR Model
-train$Choice <- as.numeric(as.character(train$Choice))  # it's a factor stored as numbers
-train$Gender = as.numeric(as.character(train$Gender))
-test$Choice = as.numeric(as.character(test$Choice))
-test$Gender = as.numeric(as.character(test$Gender))
-m1 = lm(Choice ~., data = train)
-vif(m1)
-m2 = lm(Choice ~ . -Last_purchase, data = train)
-vif(m2)
-m3 <- lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, 
-         data = train)
-vif(m3)
-
-summary(m3)
-
-m4 = lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
-        data = train)
-summary(m4)
-predictions = predict(m4, newdata = test, type = "response")
-##when using predict function make sure it's going to new data
-
-#Measures
-mse = mean((test$Choice - predictions)^2)
-mae = mean(abs(test$Choice - predictions))
-me = mean(test$Choice - predictions)
-mape =  mean(abs(test$Choice - predictions)/test$Choice)*100
 
 
 
 
+
+
+
+
+
+
+
+##### Predicting Profits ##### 
+#Calc profit per book 
+book_cost = 15*1.45 #each book costs $15 plus 45% overhead
+book_profit = 31.95-book_cost #each book is sold for $31.95
+
+#If sending mailings to entire list
+total_list = 50000 #list of 50,000 customers to mail ad to 
+total_cost = 0.65*total_list #cost to mail entire list an ad 
+#According to case study prompt, 9.03% of mailings resulted in an order
+total_profit = 0.0903*total_list*book_profit-total_cost
+
+#If using logistic regression model to selectively send mailings
+#predicted (495+138)/(2300)=27.5% would purchase a book with only 138/(495+138) actually buying the book (21.8%)
+model_list = total_list*0.275 #Number of customers to send mailings to
+model_cost = 0.65*model_list
+model_profit = 0.218*model_list*book_profit-model_cost
