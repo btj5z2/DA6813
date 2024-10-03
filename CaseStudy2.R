@@ -40,6 +40,56 @@ test = cbind(BBBC_test[,2:3], test) #combine factor data with normalized data an
 test[fac_vars] = lapply(test[fac_vars],as.factor)
 str(test)
 
+### BALANCE DATA
+train_y = train %>% filter(Choice ==1)
+train_n = train %>% filter(Choice ==0)
+
+sample_y = sample_n(train_n, nrow(train_y))
+train_bal = rbind(train_y, sample_y)
+
+plot(train_bal$Choice)
+
+test_y = test %>% filter(Choice ==1)
+test_n = test %>% filter(Choice ==0)
+
+sample_test_y = sample_n(test_n, nrow(test_y))
+test_bal = rbind(test_y, sample_test_y)
+
+plot(test_bal$Choice)
+
+### Linear Model
+## LR Model
+train$Choice <- as.numeric(as.character(train$Choice))  # it's a factor stored as numbers
+train$Gender = as.numeric(as.character(train$Gender))
+test$Choice = as.numeric(as.character(test$Choice))
+test$Gender = as.numeric(as.character(test$Gender))
+m1 = lm(Choice ~., data = train)
+vif(m1)
+m2 = lm(Choice ~ . -Last_purchase, data = train)
+vif(m2)
+m3 <- lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, 
+         data = train)
+vif(m3)
+
+summary(m3)
+
+m4 = lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
+        data = train)
+summary(m4)
+predictions = predict(m4, newdata = test, type = "response")
+##when using predict function make sure it's going to new data
+
+#Measures
+mse = mean((test$Choice - predictions)^2)
+mae = mean(abs(test$Choice - predictions))
+me = mean(test$Choice - predictions)
+mape =  mean(abs(test$Choice - predictions)/test$Choice)*100
+
+
+
+
+
+
 #Multi Collinearity
 log.model = glm(Choice ~ . , data = train, family = binomial)
 vif(log.model)
