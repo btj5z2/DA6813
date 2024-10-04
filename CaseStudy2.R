@@ -116,26 +116,27 @@ test$PredSur = ifelse(test$PredProb >= 0.3, 1, 0) # Create new variable converti
 caret::confusionMatrix(as.factor(test$PredSur), as.factor(test$Choice) ) #Comparing observed to predicted
 
 
-### Adding SVM Model ###
+### Adding SVM Model (with balanced data and optimal predictors) ###
 
-# SVM requires normalized numerical variables
-# Refit SVM model using e1071 package
-svm.model <- svm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
-                        data = train, 
-                        kernel = "radial",  
-                        probability = TRUE)
+tune_result <- tune(svm, 
+                    Choice ~ Gender + Amount_purchased + P_Child , 
+                    data = train_bal, 
+                    kernel = "radial", 
+                    ranges = list(C = 2^(-5:2), gamma = 2^(-5:2)), 
+                    probability = TRUE)
 
-# Predict using the test data
-test$svm_pred <- predict(svm.model, test, probability = TRUE)
-svm.prob <- attr(predict(svm.model, test, probability = TRUE), "probabilities")[,2]
+# Best model
+svm_best_model <- tune_result$best.model
+
+# Predict with the best model
+test_bal$svm_pred <- predict(svm_best_model, test_bal, probability = TRUE)
+svm.prob_best <- attr(predict(svm_best_model, test_bal, probability = TRUE), "probabilities")[,2]
 
 # Classify predictions based on a threshold of 0.5
-test$svm_class <- ifelse(svm.prob >= 0.5, 1, 0)
+test_bal$svm_class <- ifelse(svm.prob_best >= 0.5, 1, 0)
 
-# Evaluate SVM predictions
-caret::confusionMatrix(as.factor(test$Choice), as.factor(test$svm_class))
-
-
+# Evaluate the tuned SVM model
+caret::confusionMatrix(as.factor(test_bal$Choice), as.factor(test_bal$svm_class))
 
 
 
