@@ -76,8 +76,14 @@ summary(m3)
 m4 = lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Cook + P_DIY + P_Art, 
         data = train)
 summary(m4)
-predictions = predict(m4, newdata = test, type = "response")
-##when using predict function make sure it's going to new data
+
+m5 = lm(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_DIY + P_Art, 
+        data = train)
+summary(m5)
+
+predictions = predict(m5, newdata = test, type = "response")
+
+
 
 #Measures
 mse = mean((test$Choice - predictions)^2)
