@@ -118,28 +118,67 @@ caret::confusionMatrix(as.factor(test$PredSur), as.factor(test$Choice) ) #Compar
 
 ### Adding SVM Model (with balanced data and optimal predictors) ###
 
-tune_result <- tune(svm, 
-                    Choice ~ Gender + Amount_purchased + P_Child , 
-                    data = train_bal, 
-                    kernel = "radial", 
-                    ranges = list(C = 2^(-5:2), gamma = 2^(-5:2)), 
-                    probability = TRUE)
-
-# Best model
-svm_best_model <- tune_result$best.model
-
-# Predict with the best model
-test_bal$svm_pred <- predict(svm_best_model, test_bal, probability = TRUE)
-svm.prob_best <- attr(predict(svm_best_model, test_bal, probability = TRUE), "probabilities")[,2]
-
-# Classify predictions based on a threshold of 0.5
-test_bal$svm_class <- ifelse(svm.prob_best >= 0.5, 1, 0)
-
-# Evaluate the tuned SVM model
-caret::confusionMatrix(as.factor(test_bal$Choice), as.factor(test_bal$svm_class))
 
 
+# We'll scale both the training and testing data (except for the target variable)
+train_scaled <- train
+test_scaled <- test
 
+# Scale the numeric columns in the training and test sets
+test_scaled$Choice <- as.factor(test_scaled$Choice)
+train_scaled$Choice <- as.factor(train_scaled$Choice)
+numeric_cols <- sapply(train_scaled, is.numeric)
+train_scaled[numeric_cols] <- scale(train_scaled[numeric_cols])
+test_scaled[numeric_cols] <- scale(test_scaled[numeric_cols])
+
+# SVM Model with Grid Search for Hyper parameter Tuning
+# Define tuning grid for cost and gamma (for radial kernel)
+tune_grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100), 
+                         sigma = c(0.001, 0.01, 0.1, 1))
+
+# Tuning Radial Basis Function (RBF) kernel SVM
+set.seed(123)
+svm_tune <- tune(svm, Choice ~ ., data = train_scaled, 
+                 kernel = "radial", 
+                 ranges = list(cost = tune_grid$C, gamma = tune_grid$sigma),
+                 scale = FALSE)  # Don't scale inside the SVM function, we've already done that
+
+# Best model based on cross-validation
+best_model <- svm_tune$best.model
+print(svm_tune)
+
+# Test the tuned SVM model
+pred_svm <- predict(best_model, newdata = test_scaled)
+confusionMatrix(pred_svm, test_scaled$Choice)
+
+# Testing Other Kernels
+# Linear Kernel
+set.seed(123)
+svm_linear <- svm(Choice ~ ., data = train_scaled, 
+                  kernel = "linear", 
+                  cost = best_model$cost, 
+                  scale = FALSE)
+pred_linear <- predict(svm_linear, newdata = test_scaled)
+confusionMatrix(pred_linear, test_scaled$Choice)
+
+# Polynomial Kernel (degree 3)
+set.seed(123)
+svm_poly <- svm(Choice ~ ., data = train_scaled, 
+                kernel = "polynomial", 
+                cost = best_model$cost, 
+                degree = 3, 
+                scale = FALSE)
+pred_poly <- predict(svm_poly, newdata = test_scaled)
+confusionMatrix(pred_poly, test_scaled$Choice)
+
+# Compare accuracy across different kernels
+linear_acc <- sum(pred_linear == test_scaled$Choice) / nrow(test_scaled)
+rbf_acc <- sum(pred_svm == test_scaled$Choice) / nrow(test_scaled)
+poly_acc <- sum(pred_poly == test_scaled$Choice) / nrow(test_scaled)
+
+cat("Linear Kernel Accuracy: ", linear_acc, "\n")
+cat("RBF Kernel Accuracy: ", rbf_acc, "\n")
+cat("Polynomial Kernel Accuracy: ", poly_acc, "\n")
 
 
 
