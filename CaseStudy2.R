@@ -1,4 +1,4 @@
-pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl, e1071)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl, e1071, klaR)
 
 ##For lit review, write a paper that contains an analysis on bank-related data and compare what analytical techniques they used and worked
 #Sample training data set like done in titanic example
@@ -22,8 +22,35 @@ fac_vars = c("Choice", "Gender")
 train[fac_vars] = lapply(train[fac_vars],as.factor)
 test[fac_vars] = lapply(test[fac_vars],as.factor)
 
+#Merge both datasets for visualizations
+bbbc_full = union_all(test, train)
+
 ##### Balanced? No.##### 
-plot(train$Choice)
+ggplot(bbbc_full, aes(Choice)) +
+  geom_bar() +
+  labs(caption = "Figure X.X:")
+  theme(plot.caption = element_text(hjust = 0.5))
+  
+#Visualizations
+##Numerical Variables
+grid.arrange(ggplot(bbbc_full, aes(Choice, Amount_purchased)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, Frequency)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, Last_purchase)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, First_purchase)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, P_Child)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, P_Youth)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, P_Cook)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, P_DIY)) + geom_boxplot(),
+             ggplot(bbbc_full, aes(Choice, P_Art)) + geom_boxplot(),
+             ncol = 5,
+             bottom = 'Figure X.X: Boxplots of Numerical Values')
+
+##Categorical Variables
+ggplot(bbbc_full) + 
+  facet_wrap(~Choice) +
+  labs(caption = "Figure X.X:") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.caption = element_text(hjust = 0.5)) + 
+  geom_bar(aes(x = Gender))
 
 #Correlation Plot
 combined = rbind(train, test)
@@ -142,14 +169,32 @@ test$svm_class <- ifelse(svm.prob >= 0.5, 1, 0)
 caret::confusionMatrix(as.factor(test$Choice), as.factor(test$svm_class))
 
 
+### LDA Model ###
 
+# LDA Feature Selection
+rand_f.model = randomForest::randomForest(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, data = train_bal)
 
+varImpPlot(rand_f.model,
+           sort = T,
+           n.var = 10,
+           main = "Top 10 - Variable Importance")
 
+# LDA Model
+LDA.model.full = lda(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, data = train_bal)
 
+LDA.model.trim = lda(Choice ~ Amount_purchased + Frequency + P_Art, data = train_bal)
 
+# LDA Predictions
+LDA.preds.full = predict(LDA.model.full, test, probability = TRUE)
 
+LDA.preds.trim = predict(LDA.model.trim, test, probability = TRUE)
 
+# Model Performance
+## All Predictors
+caret::confusionMatrix(as.factor(LDA.preds.full$class), test$Choice)
 
+## Trimmed Predictors
+caret::confusionMatrix(as.factor(LDA.preds.trim$class), test$Choice)
 
 
 ##### Predicting Profits ##### 
