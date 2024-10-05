@@ -249,7 +249,7 @@ rand_f.model = randomForest::randomForest(Choice ~ Gender + Amount_purchased + F
 varImpPlot(rand_f.model,
            sort = T,
            n.var = 10,
-           main = "Top 10 - Variable Importance")
+           main = "Figure 3. Variable Important plot")
 
 # LDA Model
 LDA.model.full = lda(Choice ~ Gender + Amount_purchased + Frequency + P_Child + P_Youth + P_Cook + P_DIY + P_Art, data = train_bal)
@@ -260,6 +260,9 @@ LDA.model.trim = lda(Choice ~ Amount_purchased + Frequency + P_Art, data = train
 LDA.preds.full = predict(LDA.model.full, test, probability = TRUE)
 
 LDA.preds.trim = predict(LDA.model.trim, test, probability = TRUE)
+
+# Partition Plot
+partimat(Choice ~ Amount_purchased + Frequency + P_Art, data = train_bal, method = "lda")
 
 # Model Performance
 ## All Predictors
