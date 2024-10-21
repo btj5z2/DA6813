@@ -52,3 +52,8 @@ min(dow$date)
 # All entries on 1/7/2011 have NA values for prior week.
 # This date is the earliest date in the dataset, so these values being for previous week can be expected
 # Any time series analysis over the change in volumes, should omit these rows
+
+### Plot of percent price change over time
+dow %>%
+  ggplot(aes(x = date, y = percent_change_price, group = stock, color = stock)) +
+  geom_line()
