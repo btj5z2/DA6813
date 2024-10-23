@@ -126,4 +126,46 @@ grid.arrange(ggplot(dow_norm1, aes(volume)) + geom_boxplot(),
 dow_train = dow_norm[dow_norm$quarter==1,]
 dow_test = dow_norm[dow_norm$quarter==2,]
 
+## Logistic Model
+log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
+summary(log.model8)
+
+#Predictions 
+dow_test$PredPercentChange = predict.glm(log.model8, newdata = dow_test, type = "response")
+
+actual_vs_pred = data.frame(Actual = dow_test$percent_change_next_weeks_price, Predicted = dow_test$PredPercentChange)
+
+rmse = sqrt(mean((actual_vs_pred$Actual - actual_vs_pred$Predicted)^2))
+print(paste("RMSE:", rmse))
+
+
+# Set a threshold to classify the predicted percentage change
+# if the predicted change is greater than 0, classify it as an increase
+dow_test$Direction = ifelse(dow_test$percent_change_next_weeks_price > 0, 1, 0)
+dow_test$Direction = as.factor(dow_test$Direction)
+dow_test$PredDirection = ifelse(dow_test$PredPercentChange > 0, 1, 0)
+dow_test$PredDirection = as.factor(dow_test$PredDirection)
+
+# Confusion Matrix to compare actual vs predicted directional movements
+conf_matrix = caret::confusionMatrix(dow_test$PredDirection, dow_test$Direction, positive = "1")
+print(conf_matrix)
+
+# accuracy, sensitivity, and specificity
+accuracy = conf_matrix$overall["Accuracy"]
+sensitivity = conf_matrix$byClass["Sensitivity"]
+specificity = conf_matrix$byClass["Specificity"]
+
+print(paste("Accuracy:", accuracy))
+print(paste("Sensitivity:", sensitivity))
+print(paste("Specificity:", specificity))
+
+### LDA Model ###
+
+# LDA Feature Selection
+rand_f.model = randomForest::randomForest(percent_change_next_weeks_price ~ ., data = dow_train)
+
+varImpPlot(rand_f.model,
+           sort = T,
+           n.var = 10,
+           main = "Figure X. Variable Important plot")
 
