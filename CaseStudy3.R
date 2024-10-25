@@ -123,8 +123,9 @@ grid.arrange(ggplot(dow_norm1, aes(volume)) + geom_boxplot(),
 
 #Split into train & test data sets 
 #Per the case study, quarter 1 will be used as the training data set and quarter 2 will be test data set 
-dow_train = dow_norm[dow_norm$quarter==1,]
-dow_test = dow_norm[dow_norm$quarter==2,]
+dow_train = dow_norm1[dow_norm1$quarter==1,]
+dow_test = dow_norm1[dow_norm1$quarter==2,]
+
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
@@ -168,4 +169,59 @@ varImpPlot(rand_f.model,
            sort = T,
            n.var = 10,
            main = "Figure X. Variable Important plot")
+
+
+
+# SVR Model with Grid Search for Hyper parameter Tuning
+# Define tuning grid for cost and gamma (for radial kernel)
+tune_grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100), 
+                         sigma = c(0.001, 0.01, 0.1, 1))
+
+# Tuning Radial Basis Function (RBF) kernel SVM
+set.seed(123)
+svr_tune <- tune(svm, percent_change_next_weeks_price ~ ., data = dow_train,
+                 type = "eps-regression",
+                 kernel = "radial", 
+                 ranges = list(cost = tune_grid$C, gamma = tune_grid$sigma),
+                 scale = FALSE)  # Don't scale inside the SVM function, we've already done that
+
+# Best model based on cross-validation
+best_model <- svr_tune$best.model
+print(svr_tune)
+
+# Test the tuned SVM model
+pred_svr <- predict(best_model, newdata = dow_test)
+
+#RMSE
+rmse = sqrt(mean((dow_test$percent_change_next_weeks_price - pred_svr)^2))
+print(paste("RMSE:", rmse))
+
+# Testing Other Kernels
+# Linear Kernel
+set.seed(123)
+svr_linear <- svm(percent_change_next_weeks_price ~ ., data = dow_train,
+                  type = "eps-regression",
+                  kernel = "linear", 
+                  cost = best_model$cost, 
+                  scale = FALSE)
+pred_linear <- predict(svr_linear, newdata = dow_test)
+#RMSE
+rmse = sqrt(mean((dow_test$percent_change_next_weeks_price - pred_linear)^2))
+print(paste("RMSE:", rmse))
+
+# Polynomial Kernel (degree 3)
+set.seed(123)
+svr_poly <- svm(percent_change_next_weeks_price ~ ., data = dow_train,
+                type = "eps-regression", 
+                kernel = "polynomial", 
+                cost = best_model$cost, 
+                degree = 3, 
+                scale = FALSE)
+pred_poly <- predict(svr_poly, newdata = dow_test)
+#RMSE
+rmse = sqrt(mean((dow_test$percent_change_next_weeks_price - pred_poly)^2))
+print(paste("RMSE:", rmse))
+
+
+
 
