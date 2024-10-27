@@ -148,13 +148,13 @@ dow_test$PredDirection = ifelse(dow_test$PredPercentChange > 0, 1, 0)
 dow_test$PredDirection = as.factor(dow_test$PredDirection)
 
 # Confusion Matrix to compare actual vs predicted directional movements
-conf_matrix = caret::confusionMatrix(dow_test$PredDirection, dow_test$Direction, positive = "1")
-print(conf_matrix)
+conf_matrix_glm = caret::confusionMatrix(dow_test$PredDirection, dow_test$Direction, positive = "1")
+print(conf_matrix_glm)
 
 # accuracy, sensitivity, and specificity
-accuracy = conf_matrix$overall["Accuracy"]
-sensitivity = conf_matrix$byClass["Sensitivity"]
-specificity = conf_matrix$byClass["Specificity"]
+accuracy = conf_matrix_glm$overall["Accuracy"]
+sensitivity = conf_matrix_glm$byClass["Sensitivity"]
+specificity = conf_matrix_glm$byClass["Specificity"]
 
 print(paste("Accuracy:", accuracy))
 print(paste("Sensitivity:", sensitivity))
@@ -169,6 +169,25 @@ varImpPlot(rand_f.model,
            sort = T,
            n.var = 10,
            main = "Figure X. Variable Important plot")
+
+rand_f.model2 = randomForest::randomForest(percent_change_next_weeks_price ~ . -quarter -stock, data = dow_train)
+#removed quarter (least) and stock so that all features were above 20- this grouping was highest
+
+varImpPlot(rand_f.model2,
+           sort = T,
+           n.var = 10,
+           main = "Figure X. Variable Important plot")
+
+# Make predictions on the test data
+rf_pred = predict(rand_f.model2, dow_test)
+print(rf_pred)
+
+dow_test$Direction_rf = ifelse(dow_test$percent_change_next_weeks_price == 0, 1, 0)
+dow_test$Direction_rf = as.factor(dow_test$Direction_rf)
+
+# Confusion Matrix to compare actual vs predicted direction 
+conf_matrix_rf = caret::confusionMatrix(rf_pred, dow_test$Direction, positive = "1")
+print(conf_matrix_rf)
 
 
 
