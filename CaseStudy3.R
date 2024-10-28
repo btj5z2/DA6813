@@ -242,5 +242,52 @@ rmse = sqrt(mean((dow_test$percent_change_next_weeks_price - pred_poly)^2))
 print(paste("RMSE:", rmse))
 
 
+### Decision Tree/RF ####
+library(rpart)
+library(rpart)
+library(randomForest)
+# Set seed for reproducibility
+set.seed(123)
 
+# Build a regression tree model using rpart with method = "anova"
+decision_tree_model <- rpart(percent_change_next_weeks_price ~ ., data = dow_train, method = "anova")
 
+# Predict on the test set with continuous values
+dt_predictions <- predict(decision_tree_model, dow_test)
+
+# Evaluate model performance with metrics like RMSE, MAE, etc., since this is regression
+rmse <- sqrt(mean((dt_predictions - dow_test$percent_change_next_weeks_price)^2))
+mae <- mean(abs(dt_predictions - dow_test$percent_change_next_weeks_price))
+
+# Train the Decision Tree model with default parameters
+decision_tree_model <- rpart(percent_change_next_weeks_price ~ ., data = dow_train, method = "anova")
+
+# Hyperparameter Tuning for the Decision Tree (finding best complexity parameter 'cp')
+best_cp <- decision_tree_model$cptable[which.min(decision_tree_model$cptable[,"xerror"]), "CP"]
+tuned_decision_tree_model <- rpart(percent_change_next_weeks_price ~ ., data = dow_train, method = "anova",
+                                   control = rpart.control(cp = best_cp))
+
+# Predictions with the tuned Decision Tree model
+tuned_dt_predictions <- predict(tuned_decision_tree_model, dow_test)
+
+# Evaluate tuned Decision Tree performance
+tuned_dt_rmse <- sqrt(mean((tuned_dt_predictions - dow_test$percent_change_next_weeks_price)^2))
+tuned_dt_mae <- mean(abs(tuned_dt_predictions - dow_test$percent_change_next_weeks_price))
+
+# Random Forest Model
+rf_model <- randomForest(percent_change_next_weeks_price ~ ., data = dow_train, ntree = 100)
+
+# Predictions with the Random Forest model
+rf_predictions <- predict(rf_model, dow_test)
+
+# Evaluate Random Forest performance
+rf_rmse <- sqrt(mean((rf_predictions - dow_test$percent_change_next_weeks_price)^2))
+rf_mae <- mean(abs(rf_predictions - dow_test$percent_change_next_weeks_price))
+
+# Print Random Forest, tuned Decision Tree, and Decision Tree performance metrics
+print(paste("Decision Tree Model RMSE:", round(rmse, 2)))
+print(paste("Decision Tree Model MAE:", round(mae, 2)))
+print(paste("Tuned Decision Tree RMSE:", round(tuned_dt_rmse, 2)))
+print(paste("Tuned Decision Tree MAE:", round(tuned_dt_mae, 2)))
+print(paste("Random Forest RMSE:", round(rf_rmse, 2)))
+print(paste("Random Forest MAE:", round(rf_mae, 2)))
