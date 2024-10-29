@@ -1,0 +1,4 @@
+"0",""
+"0","pacman::p_load(tidyverse, caret, earth, parallel, doParallel, mlbench, randomForest,"
+"0","               tree, rpart, gbm, Cubist, partykit, httr, e1071, party, usethis, RCurl,"
+"0","               pROC, MASS, glmnet, MLmetrics, pamr, klaR, mda, kernlab, modeldata)"

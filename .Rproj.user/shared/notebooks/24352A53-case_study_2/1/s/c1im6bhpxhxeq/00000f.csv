@@ -1,0 +1,4 @@
+"0",""
+"0","ggplot(bbbc_full, aes(Choice)) +"
+"0","  geom_bar() +"
+"0","  labs(caption = ""Figure X.X:"")"

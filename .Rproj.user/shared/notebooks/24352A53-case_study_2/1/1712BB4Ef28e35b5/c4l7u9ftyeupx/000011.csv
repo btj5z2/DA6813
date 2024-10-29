@@ -1,0 +1,12 @@
+"0",""
+"0","bbbc_test = read_xlsx(""C:/Users/mach1/OneDrive - University of Texas at San Antonio/MSDA/2024Fall/DA6813/Case Studies/Case Study 2 - Bookbinders/BBBC-Test.xlsx"") %>%"
+"0","  dplyr::select(-(Observation))"
+"0",""
+"0","bbbc_train = read_xlsx(""C:/Users/mach1/OneDrive - University of Texas at San Antonio/MSDA/2024Fall/DA6813/Case Studies/Case Study 2 - Bookbinders/BBBC-Train.xlsx"") %>%"
+"0","  dplyr::select(-(Observation))"
+"2","Error: no more error handlers available (recursive errors?); invoking 'abort' restart
+"
+"2","Warning: type 29 is unimplemented in 'type2char'"
+"2","Error in data.frame(Name = res[[1]], Length = res[[2]], Date = dates,  : 
+  INTEGER() can only be applied to a 'integer', not a 'unknown type #29'
+"

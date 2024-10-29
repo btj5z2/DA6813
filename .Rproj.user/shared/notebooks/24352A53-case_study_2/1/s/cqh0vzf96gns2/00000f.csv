@@ -1,0 +1,6 @@
+"0",""
+"0","p = ggplot(bbbc_full) +"
+"0","  facet_wrap(~Choice) +"
+"0","  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))"
+"0",""
+"0","p + geom_bar(aes(x = Gender))"
