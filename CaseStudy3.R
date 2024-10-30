@@ -20,6 +20,11 @@ dow[num_vars] = lapply(dow[num_vars], as.numeric)
 
 dow$date = as.Date(dow$date, '%m/%d/%Y')
 
+# Convert 'stock' and 'quarter' column to factor type
+
+#dow$stock = as.factor(dow$stock)
+#dow$quarter = as.factor(dow$quarter)
+
 ### Review column details to validate changes ###
 str(dow)
 
@@ -62,7 +67,7 @@ dow %>%
   geom_line()
 
 #Correlation Plot
-corrplot::corrplot(cor(dow[,-c(2:3)]), method = c("number")) #Quite a few variables with high correlation 
+corrplot::corrplot(cor(dow[,-c(1:3)]), method = c("number")) #Quite a few variables with high correlation 
 
 #Multi Collinearity
 lin.model = lm(percent_change_next_weeks_price ~ . , data = dow)
@@ -129,26 +134,32 @@ dow_test = dow_norm1[dow_norm1$quarter==2,]
 #FOR LOOP to run each model on different stocks 
 stocks <- unique(dow$stock) #create vector of stock names 
 
-results <- data.frame(Stocks = stocks) #create an empty data frame to fill,
-#row.names(results) = stocks
-for (i in stocks) {
-  #Run model on train data set
-  dow_train_stock = dow_train[dow_train$stock == i,]
-  log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
+rmse = function(predicted, actual) {
+  sqrt(mean((predicted-actual)^2))
+}
+
+results = data.frame(Stock = character(), RMSE = numeric(), stringsAsFactors = FALSE) #create an empty data frame to fill,
+for (stock in stocks) {
+  #Filter data sets based on stock
+  dow_train_stock = dow_train[dow_train$stock == stock,] 
+  dow_train_stock = dow_train_stock %>% dplyr::select(-stock)
+  dow_test_stock = dow_test[dow_test$stock == stock,]
+  dow_test_stock = dow_test_stock %>%  dplyr::select(-stock)
+  #Fit models on training data set
+  model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
   
-  #Evaluate model on test data
-  dow_test_stock = dow_test[dow_test$stock == i,]
-  dow_test_stock$PredPercentChange = predict.glm(log.model8, newdata = dow_test_stock, type = "response")
+  #Predict on test data
+  dow_test_stock$PredPercentChange = predict.glm(model, newdata = dow_test_stock, type = "response")
   
   #Performance metric
-  actual_vs_pred = data.frame(Actual = dow_test_stock$percent_change_next_weeks_price, Predicted = dow_test_stock$PredPercentChange)
-  rmse_log = sqrt(mean((actual_vs_pred$Actual - actual_vs_pred$Predicted)^2))
-  
+  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price)
   
   #Store performance in data table
-  
-  #results <- cbind(results, log[results$Stocks == stock] = rmse_log) #add onto previous data or empty df.
+  results = rbind(results, data.frame(Stock = stock, RMSE = rmse_value)) #add onto previous data or empty df.
 }
+
+print(results)
+
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
