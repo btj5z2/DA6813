@@ -1,18 +1,13 @@
-pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
-               car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
-               readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate)
+pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, car, corrplot, gridExtra, ROCR, RCurl, randomForest, readr, readxl, e1071, klaR)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
-sp500_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/SP500.csv'), header = TRUE))
 
 ##### Copy of Data Set for Model ######
 dow = dow_raw
-sp500 = sp500_raw
 
 ### Review Details of Data Set ###
 str(dow)
-str(sp500)
 
 # Many numeric values were read in as strings
 # Convert these values to numeric data types
@@ -21,25 +16,9 @@ num_vars = c('open', 'high', 'low', 'close', 'next_weeks_open', 'next_weeks_clos
 dow[num_vars] = lapply(dow[num_vars], gsub, pattern = '[\\$,]', replacement = '')
 dow[num_vars] = lapply(dow[num_vars], as.numeric)
 
-sp500 =
-  rename(
-    sp500,
-    date = ï..Date,
-    open = Open,
-    high = High,
-    low = Low,
-    close = CloseÂ.,
-    adj_close = Adj.CloseÂ.,
-    volume = Volume
-  )
-sp500_num_vars = c('open', 'high', 'low', 'close', 'adj_close', 'volume')
-sp500[sp500_num_vars] = lapply(sp500[sp500_num_vars], gsub, pattern = '[\\$,]', replacement = '')
-sp500[sp500_num_vars] = lapply(sp500[sp500_num_vars], as.numeric)
-
 # Convert 'date' column to date type
 
 dow$date = as.Date(dow$date, '%m/%d/%Y')
-sp500$date = mdy(sp500$date)
 
 ### Review column details to validate changes ###
 str(dow)
@@ -125,7 +104,7 @@ grid.arrange(ggplot(dow, aes(volume)) + geom_boxplot(),
 
 #Numerical data is pretty skewed. Likely worth normalizing. 
 #install.packages("bestNormalize")
-#library(bestNormalize)
+library(bestNormalize)
 dow_norm = lapply(dow[,c(4:9)], yeojohnson) #normalize numeric data 
 #scale function just changed the scale, it was still skewed. log and sqrt gave errors to ended up with "yeojohnson." Appears to work well! 
 dow_norm1 = cbind(dow[,1:3], volume = dow_norm$volume$x.t, percent_change_price = dow_norm$percent_change_price$x.t, 
@@ -147,6 +126,29 @@ grid.arrange(ggplot(dow_norm1, aes(volume)) + geom_boxplot(),
 dow_train = dow_norm1[dow_norm1$quarter==1,]
 dow_test = dow_norm1[dow_norm1$quarter==2,]
 
+#FOR LOOP to run each model on different stocks 
+stocks <- unique(dow$stock) #create vector of stock names 
+
+results <- data.frame(Stocks = stocks) #create an empty data frame to fill,
+#row.names(results) = stocks
+for (i in stocks) {
+  #Run model on train data set
+  dow_train_stock = dow_train[dow_train$stock == i,]
+  log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
+  
+  #Evaluate model on test data
+  dow_test_stock = dow_test[dow_test$stock == i,]
+  dow_test_stock$PredPercentChange = predict.glm(log.model8, newdata = dow_test_stock, type = "response")
+  
+  #Performance metric
+  actual_vs_pred = data.frame(Actual = dow_test_stock$percent_change_next_weeks_price, Predicted = dow_test_stock$PredPercentChange)
+  rmse_log = sqrt(mean((actual_vs_pred$Actual - actual_vs_pred$Predicted)^2))
+  
+  
+  #Store performance in data table
+  
+  #results <- cbind(results, log[results$Stocks == stock] = rmse_log) #add onto previous data or empty df.
+}
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
@@ -264,8 +266,9 @@ print(paste("RMSE:", rmse))
 
 
 ### Decision Tree/RF ####
-#library(rpart)
-#library(randomForest)
+library(rpart)
+library(rpart)
+library(randomForest)
 # Set seed for reproducibility
 set.seed(123)
 
