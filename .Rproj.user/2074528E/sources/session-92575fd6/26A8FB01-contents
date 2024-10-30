@@ -1,15 +1,18 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
-               readr, readxl, e1071, klaR, bestNormalize, rpart)
+               readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
+sp500_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/SP500.csv'), header = TRUE))
 
 ##### Copy of Data Set for Model ######
 dow = dow_raw
+sp500 = sp500_raw
 
 ### Review Details of Data Set ###
 str(dow)
+str(sp500)
 
 # Many numeric values were read in as strings
 # Convert these values to numeric data types
@@ -18,9 +21,25 @@ num_vars = c('open', 'high', 'low', 'close', 'next_weeks_open', 'next_weeks_clos
 dow[num_vars] = lapply(dow[num_vars], gsub, pattern = '[\\$,]', replacement = '')
 dow[num_vars] = lapply(dow[num_vars], as.numeric)
 
+sp500 =
+  rename(
+    sp500,
+    date = ï..Date,
+    open = Open,
+    high = High,
+    low = Low,
+    close = CloseÂ.,
+    adj_close = Adj.CloseÂ.,
+    volume = Volume
+  )
+sp500_num_vars = c('open', 'high', 'low', 'close', 'adj_close', 'volume')
+sp500[sp500_num_vars] = lapply(sp500[sp500_num_vars], gsub, pattern = '[\\$,]', replacement = '')
+sp500[sp500_num_vars] = lapply(sp500[sp500_num_vars], as.numeric)
+
 # Convert 'date' column to date type
 
 dow$date = as.Date(dow$date, '%m/%d/%Y')
+sp500$date = mdy(sp500$date)
 
 ### Review column details to validate changes ###
 str(dow)
