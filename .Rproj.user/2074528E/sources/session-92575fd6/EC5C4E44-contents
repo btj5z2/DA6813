@@ -131,7 +131,7 @@ grid.arrange(ggplot(dow, aes(volume)) + geom_boxplot(),
 
 #Numerical data is pretty skewed. Likely worth normalizing. 
 #install.packages("bestNormalize")
-library(bestNormalize)
+
 dow_norm = lapply(dow[,c(4:9)], yeojohnson) #normalize numeric data 
 #scale function just changed the scale, it was still skewed. log and sqrt gave errors to ended up with "yeojohnson." Appears to work well! 
 dow_norm1 = cbind(dow[,1:3], volume = dow_norm$volume$x.t, percent_change_price = dow_norm$percent_change_price$x.t, 
@@ -299,9 +299,7 @@ print(paste("RMSE:", rmse))
 
 
 ### Decision Tree/RF ####
-library(rpart)
-library(rpart)
-library(randomForest)
+
 # Set seed for reproducibility
 set.seed(123)
 
@@ -347,3 +345,4 @@ print(paste("Tuned Decision Tree RMSE:", round(tuned_dt_rmse, 2)))
 print(paste("Tuned Decision Tree MAE:", round(tuned_dt_mae, 2)))
 print(paste("Random Forest RMSE:", round(rf_rmse, 2)))
 print(paste("Random Forest MAE:", round(rf_mae, 2)))
+
