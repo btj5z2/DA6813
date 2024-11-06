@@ -1,7 +1,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
                readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
-               tseries, quantmod)
+               tseries, quantmod, knitr, kableExtra)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
@@ -169,27 +169,94 @@ rmse = function(predicted, actual) {
   sqrt(mean((predicted-actual)^2))
 }
 
-results = data.frame(Stock = character(), RMSE = numeric(), stringsAsFactors = FALSE) #create an empty data frame to fill,
+results = data.frame(Stock = character(), 
+                     Logistic = numeric(),
+                     SVR = numeric(), 
+                     Basic_Trees = numeric(),
+                     Tuned_Trees = numeric(),
+                     RF = numeric(),
+                     stringsAsFactors = FALSE) #create an empty data frame to fill,
+
 for (stock in stocks) {
   #Filter data sets based on stock
   dow_train_stock = dow_train[dow_train$stock == stock,] 
   dow_train_stock = dow_train_stock %>% dplyr::select(-stock)
   dow_test_stock = dow_test[dow_test$stock == stock,]
   dow_test_stock = dow_test_stock %>%  dplyr::select(-stock)
-  #Fit models on training data set
-  model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
   
-  #Predict on test data
-  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response")
+  # Initialize a vector to store RMSE for each model
+  stock_rmse <- c(Stock = stock)
   
-  #Performance metric
-  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price)
+  #Logistic regression
+  model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) #Fit models on training data set 
+  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response") #Predict on test data
+  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Logistic"] <- round(as.numeric(rmse_value),2)
   
-  #Store performance in data table
-  results = rbind(results, data.frame(Stock = stock, RMSE = rmse_value)) #add onto previous data or empty df.
+  #SVR
+  tune_grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100), 
+                           sigma = c(0.001, 0.01, 0.1, 1))
+  svr_tune <- tune(svm, percent_change_next_weeks_price ~ ., data = dow_train_stock,
+                   type = "eps-regression",
+                   kernel = "radial", 
+                   ranges = list(cost = tune_grid$C, gamma = tune_grid$sigma),
+                   scale = FALSE)  # Don't scale inside the SVM function, we've already done that
+  best_model <- svr_tune$best.model
+  pred_svr <- predict(best_model, newdata = dow_test_stock)
+  rmse_value = rmse(pred_svr, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["SVR"] <- round(as.numeric(rmse_value),2)
+  
+  #Basic Decision Tree Model
+  dt_model = rpart(percent_change_next_weeks_price ~ ., data = dow_train_stock)
+  dow_test_stock$PredPercentChange_DT = predict(dt_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_DT, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Basic_Trees"] <- round(as.numeric(rmse_value),2)
+  
+  #Tuned Decision Tree Model
+  tuned_dt_model = rpart(
+    percent_change_next_weeks_price ~ ., 
+    data = dow_train_stock, 
+    control = rpart.control(cp = 0.01) # Example tuning parameter
+  )
+  dow_test_stock$PredPercentChange_Tuned_DT = predict(tuned_dt_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_Tuned_DT, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Tuned_Trees"] <- round(as.numeric(rmse_value),2)
+  
+  #Random Forest Model
+  rf_model = randomForest(
+    percent_change_next_weeks_price ~ ., 
+    data = dow_train_stock, 
+    ntree = 100 # Number of trees (adjust as necessary)
+  )
+  dow_test_stock$PredPercentChange_RF = predict(rf_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_RF, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["RF"] <- round(as.numeric(rmse_value),2)
+  
+  stock_rmse_df <- as.data.frame(t(stock_rmse), stringsAsFactors = FALSE)
+  results <- rbind(results, stock_rmse_df)
+  
 }
 
+avg_row <- results %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE)) %>%
+  mutate(Stock = "Average")  # Add a label for the "Average" row
+
+# Bind the average row to the original data frame
+results <- bind_rows(results, avg_row)
+
+results <- results %>%
+  mutate(across(where(is.numeric), round, 2))
+
+# Print the new table with the average row
 print(results)
+
+results %>%
+  kable("html", caption = "RMSE for Different Models by Stock") %>%
+  kable_styling("striped", full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, color = "white", background = "black") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "blue") %>% 
+  row_spec(nrow(results), bold = TRUE, color = "white", background = "darkblue", font_size = 16, align = "center")
+
 
 # CAPM
 
@@ -214,6 +281,16 @@ for (stock in stocks) {
 }
 
 print(capm_results)
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
