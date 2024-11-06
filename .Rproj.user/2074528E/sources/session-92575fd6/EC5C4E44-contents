@@ -1,6 +1,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
-               readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate)
+               readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
+               tseries, quantmod)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
