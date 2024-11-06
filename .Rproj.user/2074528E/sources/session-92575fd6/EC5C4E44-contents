@@ -47,7 +47,7 @@ sp500 = sp500 %>%
 
 # Get SP500 weekly returns
 
-sp500
+sp500$percent_change_next_weeks_price = Delt(sp500[,5]) * 100
 
 # Convert 'stock' and 'quarter' column to factor type
 
@@ -90,6 +90,7 @@ min(dow$date)
 
 #Remove NA values
 dow = na.omit(dow)
+sp500 = na.omit(sp500)
 
 ### Plot of percent price change over time
 dow %>%
@@ -179,7 +180,7 @@ for (stock in stocks) {
   model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
   
   #Predict on test data
-  dow_test_stock$PredPercentChange = predict.glm(model, newdata = dow_test_stock, type = "response")
+  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response")
   
   #Performance metric
   rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price)
@@ -190,6 +191,29 @@ for (stock in stocks) {
 
 print(results)
 
+# CAPM
+
+capm_results = data.frame(Stock = character(), Beta_coef = numeric(), stringsAsFactors = FALSE) #create an empty data frame to fill
+for (stock in stocks) {
+  # filter data for individual stocks
+  dow_stock = dow %>%
+                  dplyr::filter(dow$stock == stock) %>%
+                  dplyr::select(percent_change_next_weeks_price)
+  sp500_data = sp500 %>%
+                  dplyr::select(percent_change_next_weeks_price)
+  capm_data = cbind(sp500_data, dow_stock)
+  colnames(capm_data) = c("SP500", "Stock")
+  
+  # Model
+  lm_model = lm(Stock ~ SP500, data = as.data.frame(capm_data))
+  beta_coef <- summary(lm_model)$coefficients[2, 1]
+  
+  # Store beta coefficients in data table
+  capm_results = capm_results %>%
+                            rbind(data.frame(Stock = stock, Beta_coef = beta_coef))
+}
+
+print(capm_results)
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
