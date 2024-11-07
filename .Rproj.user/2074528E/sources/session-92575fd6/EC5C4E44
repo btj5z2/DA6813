@@ -3,7 +3,7 @@
     "path": "~/Library/CloudStorage/OneDrive-UniversityofTexasatSanAntonio/MSDA/2024Fall/DA6813/DA6813/CaseStudy3.R",
     "project_path": "CaseStudy3.R",
     "type": "r_source",
-    "hash": "270358799",
+    "hash": "786957198",
     "contents": "",
     "dirty": false,
     "created": 1730848331710.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "213,1",
-        "scrollLine": "204"
+        "cursorPosition": "217,0",
+        "scrollLine": "199"
     },
     "folds": "",
-    "lastKnownWriteTime": 1730855828,
+    "lastKnownWriteTime": 1731022461,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1730855828795,
+    "last_content_update": 1731022461759,
     "read_only": false,
     "read_only_alternatives": []
 }

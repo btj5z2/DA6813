@@ -47,7 +47,7 @@ sp500 = sp500 %>%
 
 # Get SP500 weekly returns
 
-sp500$percent_change_next_weeks_price = Delt(sp500[,5]) * 100
+sp500$percent_change_next_weeks_price = Delt(sp500[,5], type = 'arithmetic') * 100
 
 # Convert 'stock' and 'quarter' column to factor type
 
@@ -194,10 +194,10 @@ print(results)
 # CAPM
 
 capm_results = data.frame(Stock = character(), Beta_coef = numeric(), stringsAsFactors = FALSE) #create an empty data frame to fill
-for (stock in stocks) {
+for (i in unique(dow$stock)) {
   # filter data for individual stocks
   dow_stock = dow %>%
-                  dplyr::filter(dow$stock == stock) %>%
+                  dplyr::filter(dow$stock == i) %>%
                   dplyr::select(percent_change_next_weeks_price)
   sp500_data = sp500 %>%
                   dplyr::select(percent_change_next_weeks_price)
@@ -210,7 +210,7 @@ for (stock in stocks) {
   
   # Store beta coefficients in data table
   capm_results = capm_results %>%
-                            rbind(data.frame(Stock = stock, Beta_coef = beta_coef))
+                            rbind(data.frame(Stock = i, Beta_coef = beta_coef))
 }
 
 print(capm_results)
