@@ -1,0 +1,5 @@
+"0",""
+"0","fac_vars = c(""Choice"", ""Gender"")"
+"0","bbbc_full[fac_vars] = lapply(bbbc_full[fac_vars], as.factor)"
+"0","bbbc_train[fac_vars] = lapply(bbbc_train[fac_vars],as.factor)"
+"0","bbbc_test[fac_vars] = lapply(bbbc_test[fac_vars],as.factor)"
