@@ -1,7 +1,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
                readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
-               tseries, quantmod)
+               tseries, quantmod, knitr)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
@@ -217,6 +217,11 @@ capm_results = capm_results %>%
                             arrange(desc(Beta_coef))
 
 print(capm_results)
+
+knitr::kable(capm_results, 
+             align = 'rc',
+             caption = 'CAPM Beta Coefficients for S&P 500 Comparison'
+             )
 
 ## Logistic Model
 log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
