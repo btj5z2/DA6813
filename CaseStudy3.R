@@ -24,12 +24,12 @@ dow[num_vars] = lapply(dow[num_vars], as.numeric)
 
 sp500 =
   sp500 %>% rename(
-    date = ï..Date,
-    open = Open,
-    high = High,
-    low = Low,
-    close = CloseÂ.,
-    adj_close = Adj.CloseÂ.,
+    date      = Date,
+    open      = Open,
+    high      = High,
+    low       = Low,
+    close     = Close.,
+    adj_close = Adj.Close.,
     volume = Volume
   )
   
@@ -212,6 +212,9 @@ for (i in unique(dow$stock)) {
   capm_results = capm_results %>%
                             rbind(data.frame(Stock = i, Beta_coef = beta_coef))
 }
+
+capm_results = capm_results %>%
+                            arrange(desc(Beta_coef))
 
 print(capm_results)
 
