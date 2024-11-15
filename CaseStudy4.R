@@ -44,6 +44,18 @@ crm[fac_vars] = lapply(crm[fac_vars],as.factor)
 crm = crm %>%
   dplyr::select(-customer)
 
+### Duration sub-group
+
+crm_dur = crm %>%
+  filter(acquisition == 1) %>% # filter out unacquired customers
+  dplyr::select(-c(acquisition, freq, freq_sq, crossbuy)) 
+  # drop columns fixed at 0 for unacquired customers
+
+### Check for NA
+
+which(is.na(crm))
+### No NA found
+
 ### Chart response variables
 
 #### acquisition
@@ -53,9 +65,6 @@ crm %>%
 #### data is imbalanced
 
 #### duration
-#### filter out unacquired customers
-crm_dur = crm %>%
-  filter(acquisition == 1)
 
 crm_dur %>%
   ggplot(aes(duration)) +
