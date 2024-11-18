@@ -76,10 +76,11 @@ grid.arrange(
 #### duration, ret_exp, freq, freq_sq, crossbuy, and sow are perfect predictors
 #### all of these features will only return a value if the customer is acquired
 #### otherwise, these are 0
+### Also removed profit b/c it is negative number if not acquired 
 
 ### Create acquisition data set with perfect predictors removed
 crm_acq = crm %>%
-              dplyr::select(-c(duration, ret_exp, freq, freq_sq, crossbuy, sow))
+              dplyr::select(-c(duration, profit, ret_exp, freq, freq_sq, crossbuy, sow))
 
 str(crm_acq)
 
@@ -134,19 +135,82 @@ crm_dur %>%
   geom_histogram(bins = 30)
 
 ### Check for multicollinearity
+#Acquisition data set
+lin.model = glm(acquisition~ . , data = crm_acq, family=binomial())
+vif(lin.model) #Remove acq_exp
+lin.model = glm(acquisition~ . -acq_exp , data = crm_acq, family=binomial())
+vif(lin.model) #All VIF<5
+#Remove acq_exp from data set
+crm_acq = crm %>%
+  dplyr::select(-c(duration, profit, ret_exp, freq, freq_sq, crossbuy, sow, acq_exp))
 
-#### Acquisition
+#Duration data set
+lin.model = glm(duration~ . , data = crm_dur)
+vif(lin.model) #Remove ret_exp
+lin.model = glm(duration~ . -ret_exp, data = crm_dur)
+vif(lin.model) #Remove acq_exp
+lin.model = glm(duration~ . -ret_exp -acq_exp, data = crm_dur)
+vif(lin.model) #Remove freq_sq
+lin.model = glm(duration~ . -ret_exp -acq_exp -freq_sq, data = crm_dur)
+vif(lin.model) #Remove profit
+lin.model = glm(duration~ . -ret_exp -acq_exp -freq_sq -profit, data = crm_dur)
+vif(lin.model) #All VIFs<5
+#Remove variables accordingly
+crm_dur = crm_dur %>%
+  dplyr::select(-c(ret_exp, acq_exp, freq_sq, profit))
 
 ##### Corr Plot
+num_cols = crm_acq[,sapply(crm_acq, is.numeric)]
+corrplot::corrplot(cor(num_cols), method = c("number"))
 
-corrplot::corrplot(cor(crm_acq[,-c(1,6)]))
+num_cols = crm_dur[,sapply(crm_dur, is.numeric)]
+corrplot::corrplot(cor(num_cols), method = c("number"))
 
-##### VIF
 
-#### Duration
+### BALANCE DATA
+#Below is balancing the data set by taking all 0 observations and randomly sample 162 of the 338 acquired customers. 
+#This data set (324 obs) can be split into a training and testing data sets (80%/20%) for the customer acquisition models    
 
-##### Corr Plot
+set.seed(123)
+train_1 = crm_acq %>% filter(acquisition ==1) #338 observations
+train_0 = crm_acq %>% filter(acquisition ==0) #162 observations
 
-corrplot::corrplot(cor(crm_dur[,-c(11)]))
+sample_1 = sample_n(train_1, nrow(train_0))
+crm_acq_bal = rbind(train_0, sample_1) #complete data set for the acquisition models 
+acq_partition = createDataPartition(crm_acq_bal$acquisition, p = 0.8)[[1]]
+train_acq  = crm_acq_bal[acq_partition,] #training data set to be used on acquisition models
+test_acq   = crm_acq_bal[-acq_partition,] #testing data set to be used on acquisition models
 
-##### VIF
+#For the duration models, we can use all acquired customers as then create train & test split (80/20)
+dur_partition = createDataPartition(crm_dur$duration, p = 0.8)[[1]]
+train_dur  = crm_acq_bal[dur_partition,] #training data set to be used on duration models
+test_dur   = crm_acq_bal[-dur_partition,] #testing data set to be used on duration models
+
+
+###Acquisition models 
+#Logistic regression
+log.model = glm(acquisition ~ . , data = train_acq, family = binomial) 
+summary(log.model)
+test_acq$PredPercent = predict.glm(log.model, newdata = test_acq, type = "response") #predictions
+test_acq$PredPercent_binary = ifelse(test_acq$PredPercent>0.5, 1, 0)
+actual_vs_pred = data.frame(Actual = test_acq$acquisition, Predicted = test_acq$PredPercent_binary)
+
+# Confusion Matrix to compare actual vs predicted directional movements
+test_acq$PredPercent_binary = as.factor(test_acq$PredPercent_binary)
+conf_matrix_glm = caret::confusionMatrix(test_acq$PredPercent_binary, test_acq$acquisition, positive = "1")
+print(conf_matrix_glm)
+
+# accuracy, sensitivity, and specificity
+accuracy = conf_matrix_glm$overall["Accuracy"]
+sensitivity = conf_matrix_glm$byClass["Sensitivity"]
+specificity = conf_matrix_glm$byClass["Specificity"]
+
+print(paste("Accuracy:", accuracy))
+print(paste("Sensitivity:", sensitivity))
+print(paste("Specificity:", specificity))
+
+
+
+
+
+
