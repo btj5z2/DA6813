@@ -1,7 +1,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
                readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
-               tseries, quantmod)
+               tseries, quantmod, knitr, kableExtra)
 
 ##### Data Set ######
 dow_raw = as.data.frame(read.csv(text = getURL('https://raw.githubusercontent.com/btj5z2/DA6813/main/dow_jones_index.data'), header = TRUE))
@@ -24,12 +24,12 @@ dow[num_vars] = lapply(dow[num_vars], as.numeric)
 
 sp500 =
   sp500 %>% rename(
-    date = ï..Date,
+    date = Date,
     open = Open,
     high = High,
     low = Low,
-    close = CloseÂ.,
-    adj_close = Adj.CloseÂ.,
+    close = Close.,
+    adj_close = Adj.Close.,
     volume = Volume
   )
   
@@ -157,6 +157,10 @@ grid.arrange(ggplot(dow_norm1, aes(volume)) + geom_boxplot(),
              ncol = 2,
              bottom = 'Figure X.X: Boxplots of Numerical Values')
 
+#adding binary output to run logistic regression
+dow_norm1$percent_change_next_weeks_price_binary = ifelse(dow_norm1$percent_change_next_weeks_price>0, 1, 0)
+
+
 #Split into train & test data sets 
 #Per the case study, quarter 1 will be used as the training data set and quarter 2 will be test data set 
 dow_train = dow_norm1[dow_norm1$quarter==1,]
@@ -169,27 +173,105 @@ rmse = function(predicted, actual) {
   sqrt(mean((predicted-actual)^2))
 }
 
-results = data.frame(Stock = character(), RMSE = numeric(), stringsAsFactors = FALSE) #create an empty data frame to fill,
+results = data.frame(Stock = character(), 
+                     Linear = numeric(),
+                     Logistic = numeric(),
+                     SVR = numeric(), 
+                     Basic_Trees = numeric(),
+                     Tuned_Trees = numeric(),
+                     RF = numeric(),
+                     stringsAsFactors = FALSE) #create an empty data frame to fill,
+
 for (stock in stocks) {
   #Filter data sets based on stock
   dow_train_stock = dow_train[dow_train$stock == stock,] 
   dow_train_stock = dow_train_stock %>% dplyr::select(-stock)
   dow_test_stock = dow_test[dow_test$stock == stock,]
   dow_test_stock = dow_test_stock %>%  dplyr::select(-stock)
-  #Fit models on training data set
-  model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock) 
   
-  #Predict on test data
-  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response")
+  # Initialize a vector to store RMSE for each model
+  stock_rmse <- c(Stock = stock)
+
+  #Linear regression
+  model = glm(percent_change_next_weeks_price ~ .-percent_change_next_weeks_price_binary , data = dow_train_stock) #Fit models on training data set 
+  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response") #Predict on test data
+  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Linear"] <- round(as.numeric(rmse_value),2)
   
-  #Performance metric
-  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price)
+  #Logistic regression
+  log.model8 = glm(percent_change_next_weeks_price_binary ~ .-percent_change_next_weeks_price , data = dow_train_stock, family = binomial) 
+  #model = glm(percent_change_next_weeks_price ~ . , data = dow_train_stock, family = binomial) #Fit models on training data set 
+  dow_test_stock$PredPercentChange = predict(model, newdata = dow_test_stock, type = "response") #Predict on test data
+  rmse_value = rmse(dow_test_stock$PredPercentChange, dow_test_stock$percent_change_next_weeks_price_binary) #Performance metric
+  stock_rmse["Logistic"] <- round(as.numeric(rmse_value),2)
   
-  #Store performance in data table
-  results = rbind(results, data.frame(Stock = stock, RMSE = rmse_value)) #add onto previous data or empty df.
+  #SVR
+  tune_grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100), 
+                           sigma = c(0.001, 0.01, 0.1, 1))
+  svr_tune <- tune(svm, percent_change_next_weeks_price ~ .-percent_change_next_weeks_price_binary, data = dow_train_stock,
+                   type = "eps-regression",
+                   kernel = "radial", 
+                   ranges = list(cost = tune_grid$C, gamma = tune_grid$sigma),
+                   scale = FALSE)  # Don't scale inside the SVM function, we've already done that
+  best_model <- svr_tune$best.model
+  pred_svr <- predict(best_model, newdata = dow_test_stock)
+  rmse_value = rmse(pred_svr, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["SVR"] <- round(as.numeric(rmse_value),2)
+  
+  #Basic Decision Tree Model
+  dt_model = rpart(percent_change_next_weeks_price ~ .-percent_change_next_weeks_price_binary, data = dow_train_stock)
+  dow_test_stock$PredPercentChange_DT = predict(dt_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_DT, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Basic_Trees"] <- round(as.numeric(rmse_value),2)
+  
+  #Tuned Decision Tree Model
+  tuned_dt_model = rpart(
+    percent_change_next_weeks_price ~ .-percent_change_next_weeks_price_binary, 
+    data = dow_train_stock, 
+    control = rpart.control(cp = 0.01) # Example tuning parameter
+  )
+  dow_test_stock$PredPercentChange_Tuned_DT = predict(tuned_dt_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_Tuned_DT, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["Tuned_Trees"] <- round(as.numeric(rmse_value),2)
+  
+  #Random Forest Model
+  rf_model = randomForest(
+    percent_change_next_weeks_price ~ .-percent_change_next_weeks_price_binary, 
+    data = dow_train_stock, 
+    ntree = 100 # Number of trees (adjust as necessary)
+  )
+  dow_test_stock$PredPercentChange_RF = predict(rf_model, newdata = dow_test_stock)
+  rmse_value = rmse(dow_test_stock$PredPercentChange_RF, dow_test_stock$percent_change_next_weeks_price) #Performance metric
+  stock_rmse["RF"] <- round(as.numeric(rmse_value),2)
+  
+  stock_rmse_df <- as.data.frame(t(stock_rmse), stringsAsFactors = FALSE)
+  results <- rbind(results, stock_rmse_df)
+  
 }
 
+results <- results %>%
+  mutate_at(2:7, as.numeric)
+
+avg_row <- results %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE)) %>%
+  mutate(Stock = "Average")  # Add a label for the "Average" row
+
+# Bind the average row to the original data frame
+results <- bind_rows(results, avg_row)
+
+results <- results %>%
+  mutate(across(where(is.numeric), round, 2))
+
+# Print the new table with the average row
 print(results)
+
+results %>%
+  kable("html", caption = "RMSE for Different Models by Stock") %>%
+  kable_styling("striped", full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, color = "white", background = "black") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "blue") %>% 
+  row_spec(nrow(results), bold = TRUE, color = "white", background = "darkblue", font_size = 16, align = "center")
+
 
 # CAPM
 
@@ -197,10 +279,10 @@ capm_results = data.frame(Stock = character(), Beta_coef = numeric(), stringsAsF
 for (i in unique(dow$stock)) {
   # filter data for individual stocks
   dow_stock = dow %>%
-                  dplyr::filter(dow$stock == i) %>%
-                  dplyr::select(percent_change_next_weeks_price)
+    dplyr::filter(dow$stock == i) %>%
+    dplyr::select(percent_change_next_weeks_price)
   sp500_data = sp500 %>%
-                  dplyr::select(percent_change_next_weeks_price)
+    dplyr::select(percent_change_next_weeks_price)
   capm_data = cbind(sp500_data, dow_stock)
   colnames(capm_data) = c("SP500", "Stock")
   
@@ -210,13 +292,33 @@ for (i in unique(dow$stock)) {
   
   # Store beta coefficients in data table
   capm_results = capm_results %>%
-                            rbind(data.frame(Stock = i, Beta_coef = beta_coef))
+    rbind(data.frame(Stock = i, Beta_coef = beta_coef))
 }
+
+capm_results = capm_results %>%
+  arrange(desc(Beta_coef))
 
 print(capm_results)
 
+knitr::kable(capm_results, 
+             align = 'rc',
+             caption = 'CAPM Beta Coefficients for S&P 500 Comparison'
+)
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+
+
 ## Logistic Model
-log.model8 = glm(percent_change_next_weeks_price ~ . , data = dow_train) 
+dow_train$percent_change_next_weeks_price_binary = ifelse(dow_train$percent_change_next_weeks_price>0, 1, 0)
+log.model8 = glm(percent_change_next_weeks_price_binary ~ .-percent_change_next_weeks_price , data = dow_train, family = binomial) 
 summary(log.model8)
 
 #Predictions 
