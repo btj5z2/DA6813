@@ -2,7 +2,7 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
                readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
-               tseries, quantmod, knitr, SMCRM)
+               tseries, quantmod, knitr, SMCRM, caTools)
 
 # Data
 data(acquisitionRetention)
@@ -174,7 +174,6 @@ corrplot::corrplot(cor(num_cols), method = c("number"))
 set.seed(123)
 train_1 = crm_acq %>% filter(acquisition ==1) #338 observations
 train_0 = crm_acq %>% filter(acquisition ==0) #162 observations
-
 sample_1 = sample_n(train_1, nrow(train_0))
 crm_acq_bal = rbind(train_0, sample_1) #complete data set for the acquisition models 
 acq_partition = createDataPartition(crm_acq_bal$acquisition, p = 0.8)[[1]]
@@ -186,8 +185,9 @@ dur_partition = createDataPartition(crm_dur$duration, p = 0.8)[[1]]
 train_dur  = crm_acq_bal[dur_partition,] #training data set to be used on duration models
 test_dur   = crm_acq_bal[-dur_partition,] #testing data set to be used on duration models
 
-
-###Acquisition models 
+###################################################
+###Acquisition models######
+###################################################
 #Logistic regression
 log.model = glm(acquisition ~ . , data = train_acq, family = binomial) 
 summary(log.model)
@@ -211,6 +211,49 @@ print(paste("Specificity:", specificity))
 
 
 
+###################################################
+###Duration models######
+###################################################
 
+str(crm_dur)
+# Check for missing values in crm_dur
+sum(is.na(crm_dur))
 
+# Remove rows with missing values
+crm_dur <- na.omit(crm_dur)
+
+# Set the seed for reproducibility
+set.seed(123)
+
+# Split the data into 80% training and 20% testing
+split <- sample.split(crm_dur$duration, SplitRatio = 0.8)
+train_dur <- subset(crm_dur, split == TRUE)
+test_dur <- subset(crm_dur, split == FALSE)
+
+# Train the Random Forest model
+rf_model <- randomForest(duration ~ ., data = train_dur, importance = TRUE, ntree = 100)
+print(rf_model)
+
+# Make predictions on the test set
+predictions <- predict(rf_model, newdata = test_dur)
+
+# Check performance using metrics like RMSE, R-squared, and MAE
+rmse <- sqrt(mean((predictions - test_dur$duration)^2))
+ss_total <- sum((test_dur$duration - mean(test_dur$duration))^2)
+ss_residual <- sum((test_dur$duration - predictions)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+mae <- mean(abs(predictions - test_dur$duration))
+print(paste("RMSE: ", rmse))
+print(paste("R-squared: ", r_squared))
+print(paste("MAE: ", mae))
+
+# Visualize variable importance
+importance_rf <- importance(rf_model)
+varImpPlot(rf_model)  
+
+tune_grid <- expand.grid(.mtry = 2:4)  # Set range for mtry
+rf_tune <- train(duration ~ ., data = train_dur, method = "rf", tuneGrid = tune_grid)
+print(rf_tune)
+#The tuning process showed that the optimal mtry value is 4, which suggests that using 4 variables 
+#at each split improves model performance. 
 
