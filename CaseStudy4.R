@@ -2,12 +2,13 @@
 pacman::p_load(caret, lattice, tidyverse, gam, logistf, MASS, 
                car, corrplot, gridExtra, ROCR, RCurl, randomForest, 
                readr, readxl, e1071, klaR, bestNormalize, rpart, lubridate,
-               tseries, quantmod, knitr, SMCRM)
+               tseries, quantmod, knitr, SMCRM, tree, rpart.plot)
+
 
 # Data
 data(acquisitionRetention)
-
 crm = acquisitionRetention
+
 
 ## EDA
 str(crm)
@@ -34,31 +35,22 @@ str(crm)
 ### revenue     - annual sales revenue of the prospect's firm (in millions of dollar)
 ### employees   - number of employees in the prospect's firm
 
-### Convert data type for factor variables
 
+### Convert data type for factor variables
 fac_vars = c('acquisition', 'industry')
 crm[fac_vars] = lapply(crm[fac_vars],as.factor)
 
-### Drop customer field since it is an ID number unique to the customer
 
+### Drop customer field since it is an ID number unique to the customer
 crm = crm %>%
   dplyr::select(-customer)
 
-str(crm)
-
-### Duration sub-group
-
-crm_dur = crm %>%
-  filter(acquisition == 1) %>% # filter out unacquired customers
-  dplyr::select(-c(acquisition)) # drop acquisition
 
 ### Check for NA
+which(is.na(crm)) # No NA's found
 
-which(is.na(crm))
-### No NA found
 
 ### Viz features - Acquisition
-
 grid.arrange(
   ggplot(crm, aes(acquisition, duration)) + geom_boxplot(),
   ggplot(crm, aes(acquisition, profit)) + geom_boxplot(),
@@ -75,37 +67,19 @@ grid.arrange(
   ggplot(crm, aes(acquisition, after_stat(count))) + geom_bar(aes(fill = industry), position = 'dodge'),
   bottom = 'Figure X.X: Plots of predictor relationship with acquisition response'
 )
-#### duration, ret_exp, ret_exp_sq, freq, freq_sq, crossbuy, and sow are perfect predictors
-#### all of these features will only return a value if the customer is acquired
-#### otherwise, these are 0
-#### Also removed profit b/c it is negative number if not acquired 
+# duration, ret_exp, ret_exp_sq, freq, freq_sq, crossbuy, and sow are perfect predictors
+# all of these features will only return a value if the customer is acquired
+# otherwise, these are 0
+# Also removed profit b/c it is negative number if not acquired 
+
 
 ### Create acquisition data set with perfect predictors removed
 crm_acq = crm %>%
               dplyr::select(-c(duration, profit, ret_exp, ret_exp_sq, freq, freq_sq, crossbuy, sow))
-
 str(crm_acq)
 
-### Viz features - Duration
-
-grid.arrange(
-  ggplot(crm_dur, aes(x = duration, y = profit)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = acq_exp)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = ret_exp)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = acq_exp_sq)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = ret_exp_sq)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = freq)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = freq_sq)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = crossbuy)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = sow)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = revenue)) + geom_point(),
-  ggplot(crm_dur, aes(x = duration, y = employees)) + geom_point(),
-  ggplot(crm_dur, aes(industry, duration)) + geom_boxplot(),
-  bottom = 'Figure X.X: Plots of predictor relationship with duration response'
-)
 
 ### Viz Features without relationship to a response
-
 grid.arrange(
   ggplot(crm, aes(profit)) + geom_histogram(bins = 30),
   ggplot(crm, aes(acq_exp)) + geom_histogram(bins = 30),
@@ -122,22 +96,15 @@ grid.arrange(
   bottom = 'Figure X.X: Plots of predictor variables'
 )
 
-### Viz response variables
 
-#### acquisition
+### Viz response variables - Acquisition
 crm_acq %>%
   ggplot(aes(acquisition)) +
   geom_bar()
-#### data is imbalanced
+# data is imbalanced
 
-#### duration
 
-crm_dur %>%
-  ggplot(aes(duration)) +
-  geom_histogram(bins = 30)
-
-### Check for multicollinearity
-#Acquisition data set
+### Check for multicollinearity - Acquisition 
 lin.model = glm(acquisition~ . , data = crm_acq, family=binomial())
 vif(lin.model) #Remove acq_exp_sq
 lin.model = glm(acquisition~ . -acq_exp_sq , data = crm_acq, family=binomial())
@@ -146,55 +113,35 @@ vif(lin.model) #All VIF<5
 crm_acq = crm %>%
   dplyr::select(-c(duration, profit, ret_exp, ret_exp_sq, freq, freq_sq, crossbuy, sow, acq_exp_sq))
 
-#Duration data set
-lin.model = glm(duration~ . , data = crm_dur)
-vif(lin.model) #Remove ret_exp
-lin.model = glm(duration~ . -ret_exp, data = crm_dur)
-vif(lin.model) #Remove acq_exp
-lin.model = glm(duration~ . -ret_exp -acq_exp, data = crm_dur)
-vif(lin.model) #Remove freq_sq
-lin.model = glm(duration~ . -ret_exp -acq_exp -freq_sq, data = crm_dur)
-vif(lin.model) #Remove profit
-lin.model = glm(duration~ . -ret_exp -acq_exp -freq_sq -profit, data = crm_dur)
-vif(lin.model) #All VIFs<5
-#Remove variables accordingly
-crm_dur = crm_dur %>%
-  dplyr::select(-c(ret_exp, acq_exp, freq_sq, profit))
 
-##### Corr Plot
+##### Corr Plot - Acquisition
 num_cols = crm_acq[,sapply(crm_acq, is.numeric)]
 corrplot::corrplot(cor(num_cols), method = c("number"))
 
-num_cols = crm_dur[,sapply(crm_dur, is.numeric)]
-corrplot::corrplot(cor(num_cols), method = c("number"))
 
-
-### BALANCE DATA
+### Balance and create training/testing data sets for Acquisition models 
 #Below is balancing the data set by taking all 0 observations and randomly sample 162 of the 338 acquired customers. 
 #This data set (324 obs) can be split into a training and testing data sets (80%/20%) for the customer acquisition models    
 
 set.seed(123)
-train_1 = crm_acq %>% filter(acquisition ==1) #338 observations
-train_0 = crm_acq %>% filter(acquisition ==0) #162 observations
+train_1 = crm_acq %>% filter(acquisition ==1) #338 observations of acquired customers
+train_0 = crm_acq %>% filter(acquisition ==0) #162 observations of non-acquired customers
 
-sample_1 = sample_n(train_1, nrow(train_0))
+sample_1 = sample_n(train_1, nrow(train_0)) #randomly sampling "train_1" the number of observations in "train_0"
 crm_acq_bal = rbind(train_0, sample_1) #complete data set for the acquisition models 
-acq_partition = createDataPartition(crm_acq_bal$acquisition, p = 0.8)[[1]]
+acq_partition = createDataPartition(crm_acq_bal$acquisition, p = 0.8)[[1]] #create 80% split 
 train_acq  = crm_acq_bal[acq_partition,] #training data set to be used on acquisition models
 test_acq   = crm_acq_bal[-acq_partition,] #testing data set to be used on acquisition models
 
-#For the duration models, we can use all acquired customers as then create train & test split (80/20)
-dur_partition = createDataPartition(crm_dur$duration, p = 0.8)[[1]]
-train_dur  = crm_acq_bal[dur_partition,] #training data set to be used on duration models
-test_dur   = crm_acq_bal[-dur_partition,] #testing data set to be used on duration models
 
-
-###Acquisition models 
-#Logistic regression
+######### Acquisition Model #########   
+## Logistic regression
 log.model = glm(acquisition ~ . , data = train_acq, family = binomial) 
 summary(log.model)
-test_acq$PredPercent = predict.glm(log.model, newdata = test_acq, type = "response") #predictions
-test_acq$PredPercent_binary = ifelse(test_acq$PredPercent>0.5, 1, 0)
+stepwise_log_model = step(log.model, direction = "both")
+summary(stepwise_log_model) #acq_exp removed (not being significant)
+test_acq$PredPercent = predict.glm(stepwise_log_model, newdata = test_acq, type = "response") #predictions
+test_acq$PredPercent_binary = ifelse(test_acq$PredPercent>0.50, 1, 0)
 actual_vs_pred = data.frame(Actual = test_acq$acquisition, Predicted = test_acq$PredPercent_binary)
 
 # Confusion Matrix to compare actual vs predicted directional movements
@@ -212,27 +159,27 @@ print(paste("Sensitivity:", sensitivity))
 print(paste("Specificity:", specificity))
 
 
-#### Decision Trees for Acquired Data
+## Decision Trees for Acquired Data
 # Set seed for reproducibility
 set.seed(123)
-
 tree.acq2 = tree(acquisition ~ ., data = train_acq)
-
 summary(tree.acq2)
-# Plot the tree 
 
+# Plot the tree 
 plot(tree.acq2)
 text(tree.acq2, cex=0.7)
 
 # Build a regression tree model using rpart with method = "class"
-decision_tree_model = rpart(acquisition ~ ., data = train_acq, method = "class")
+decision_tree_model = rpart(acquisition ~ . -acq_exp, data = train_acq, method = "class")
 summary(decision_tree_model)
+#Check variable importance scores
+importance = decision_tree_model$variable.importance #implies acq_exp is least important variable. 
+#Removed acq_exp so the same variables are used as in logisitic regression model
+print(importance)
 # visualization
 plot(decision_tree_model)                
 text(decision_tree_model, cex=0.7)   
 
-#install.packages("rpart.plot")
-library(rpart.plot)
 rpart.plot(decision_tree_model, 
            type = 3,                     # Display both node labels and probabilities
            extra = 104,                  # Add details like class probabilities and percentages
@@ -258,17 +205,19 @@ sensitivity_tree = true_positive / (true_positive + false_negative)  # True Posi
 specificity_tree = true_negative / (true_negative + false_positive)  # True Negative Rate
 
 # Print results
-print(paste("Accuracy:", accuracy_tree))
-print(paste("Sensitivity:", sensitivity_tree))
-print(paste("Specificity:", specificity_tree))
+print(paste("Accuracy:", round(accuracy_tree, 4)))
+print(paste("Sensitivity:", round(sensitivity_tree, 4)))
+print(paste("Specificity:", round(specificity_tree, 4)))
 
 
-### PRUNING?
+### PRUNING 
 plotcp(decision_tree_model)
 
 optimal_cp = decision_tree_model$cptable[which.min(decision_tree_model$cptable[, "xerror"]), "CP"]
 pruned_tree = prune(decision_tree_model, cp = optimal_cp)
-
+#Check variable importance scores
+importance = pruned_tree$variable.importance #implies acq_exp is least important variable
+print(importance)
 plot(pruned_tree)                
 text(pruned_tree, cex=0.7) 
 
@@ -301,5 +250,106 @@ print(paste("Sensitivity:", sensitivity_tree2))
 print(paste("Specificity:", specificity_tree2))
 
 
+######### Customer acquisition predictions on whole data set #########
+#Logistic regression had highest performance metrics so we are moving forward with it 
+crm$PredPercent = predict.glm(stepwise_log_model, newdata = crm, type = "response") #predictions
+crm$PredPercent_binary = ifelse(crm$PredPercent>0.50, 1, 0)
 
 
+######### Duration Model #########  
+### Duration sub-group
+crm_dur = crm %>%
+  filter(PredPercent_binary == 1) %>% # filter out un-acquired customers
+  dplyr::select(-c(acquisition, PredPercent, PredPercent_binary)) # drop acquisition and prediction variables
+
+### Viz features - Duration
+grid.arrange(
+  ggplot(crm_dur, aes(x = duration, y = profit)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = acq_exp)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = ret_exp)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = acq_exp_sq)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = ret_exp_sq)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = freq)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = freq_sq)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = crossbuy)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = sow)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = revenue)) + geom_point(),
+  ggplot(crm_dur, aes(x = duration, y = employees)) + geom_point(),
+  ggplot(crm_dur, aes(industry, duration)) + geom_boxplot(),
+  bottom = 'Figure X.X: Plots of predictor relationship with duration response'
+)
+
+### Viz response variables - Duration
+crm_dur %>%
+  ggplot(aes(duration)) +
+  geom_histogram(bins = 30)
+
+
+### Check for multicollinearity - Duration
+lin.model = glm(duration~ . , data = crm_dur)
+vif(lin.model) #Remove ret_exp
+lin.model = glm(duration~ . -ret_exp, data = crm_dur)
+vif(lin.model) #Remove acq_exp
+lin.model = glm(duration~ . -ret_exp -acq_exp, data = crm_dur)
+vif(lin.model) #Remove freq
+lin.model = glm(duration~ . -ret_exp -acq_exp -freq, data = crm_dur)
+vif(lin.model) #Remove profit (VIF of 5.5, figured we still have several other variables so was removed)
+lin.model = glm(duration~ . -ret_exp -acq_exp -freq -profit, data = crm_dur)
+vif(lin.model) #All VIFs<5
+#Remove variables accordingly
+crm_dur = crm_dur %>%
+  dplyr::select(-c(ret_exp, acq_exp, freq, profit))
+
+
+##### Corr Plot - Duration
+num_cols = crm_dur[,sapply(crm_dur, is.numeric)]
+corrplot::corrplot(cor(num_cols), method = c("number"))
+
+
+#For the duration models, we can use all acquired customers as then create train & test split (80/20)
+dur_partition = createDataPartition(crm_dur$duration, p = 0.8)[[1]]
+train_dur  = crm_dur[dur_partition,] #training data set to be used on duration models
+test_dur   = crm_dur[-dur_partition,] #testing data set to be used on duration models
+
+
+# Train the Random Forest model
+rf_model <- randomForest(duration ~ ., data = train_dur, importance = TRUE, ntree = 100)
+print(rf_model)
+
+# Make predictions on the test set
+predictions <- predict(rf_model, newdata = test_dur)
+
+# Check performance using metrics like RMSE, R-squared, and MAE
+rmse <- sqrt(mean((predictions - test_dur$duration)^2))
+ss_total <- sum((test_dur$duration - mean(test_dur$duration))^2)
+ss_residual <- sum((test_dur$duration - predictions)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+mae <- mean(abs(predictions - test_dur$duration))
+print(paste("RMSE: ", round(rmse,2)))
+print(paste("R-squared: ", round(r_squared,2)))
+print(paste("MAE: ", round(mae,2)))
+
+# Visualize variable importance
+importance_rf <- importance(rf_model)
+varImpPlot(rf_model)  
+#Tried re-running random forest without the least important variables (revenue, industry, & employees)
+#but got slightly worse number (i.e. 94% var explained, 101 RMSE, 0.93 R2, and 63 MAE)
+
+#Tuned Random Forest
+tune_grid <- expand.grid(.mtry = 6:10)  # Set range for mtry
+rf_tune <- train(duration ~ ., data = train_dur, method = "rf", tuneGrid = tune_grid)
+print(rf_tune)
+#The tuning process showed that the optimal mtry value is 9, which suggests that using 9 variables 
+#at each split improves model performance. 
+
+predictions <- predict(rf_tune, newdata = test_dur)
+
+# Check performance using metrics like RMSE, R-squared, and MAE
+rmse <- sqrt(mean((predictions - test_dur$duration)^2))
+ss_total <- sum((test_dur$duration - mean(test_dur$duration))^2)
+ss_residual <- sum((test_dur$duration - predictions)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+mae <- mean(abs(predictions - test_dur$duration))
+print(paste("RMSE: ", round(rmse,2)))
+print(paste("R-squared: ", round(r_squared,4)))
+print(paste("MAE: ", round(mae,2)))
