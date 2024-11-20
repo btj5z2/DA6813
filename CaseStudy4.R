@@ -144,7 +144,7 @@ lin.model = glm(acquisition~ . -acq_exp_sq , data = crm_acq, family=binomial())
 vif(lin.model) #All VIF<5
 #Remove acq_exp from data set
 crm_acq = crm %>%
-  dplyr::select(-c(duration, profit, ret_exp, freq, freq_sq, crossbuy, sow, acq_exp_sq))
+  dplyr::select(-c(duration, profit, ret_exp, ret_exp_sq, freq, freq_sq, crossbuy, sow, acq_exp_sq))
 
 #Duration data set
 lin.model = glm(duration~ . , data = crm_dur)
