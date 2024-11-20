@@ -212,6 +212,93 @@ print(paste("Sensitivity:", sensitivity))
 print(paste("Specificity:", specificity))
 
 
+#### Decision Trees for Acquired Data
+# Set seed for reproducibility
+set.seed(123)
+
+tree.acq2 = tree(acquisition ~ ., data = train_acq)
+
+summary(tree.acq2)
+# Plot the tree 
+
+plot(tree.acq2)
+text(tree.acq2, cex=0.7)
+
+# Build a regression tree model using rpart with method = "class"
+decision_tree_model = rpart(acquisition ~ ., data = train_acq, method = "class")
+summary(decision_tree_model)
+# visualization
+plot(decision_tree_model)                
+text(decision_tree_model, cex=0.7)   
+
+#install.packages("rpart.plot")
+library(rpart.plot)
+rpart.plot(decision_tree_model, 
+           type = 3,                     # Display both node labels and probabilities
+           extra = 104,                  # Add details like class probabilities and percentages
+           under = TRUE,                 # Show percentages below the node
+           fallen.leaves = TRUE,         # Align leaf nodes
+           main = "Decision Tree for Acquisition")
+
+
+
+# Predict on the test set with continuous values
+dt_predictions = predict(decision_tree_model, test_acq, type= "class")
+
+conf_matrix = table(dt_predictions, test_acq$acquisition)
+
+true_positive = conf_matrix[2, 2]  # Correctly predicted "Yes" (or 1)
+true_negative = conf_matrix[1, 1]  # Correctly predicted "No" (or 0)
+false_positive = conf_matrix[2, 1]  # Incorrectly predicted "Yes" (or 1)
+false_negative = conf_matrix[1, 2]  # Incorrectly predicted "No" (or 0)
+
+# Calculate metrics
+accuracy_tree = sum(diag(conf_matrix)) / sum(conf_matrix)
+sensitivity_tree = true_positive / (true_positive + false_negative)  # True Positive Rate
+specificity_tree = true_negative / (true_negative + false_positive)  # True Negative Rate
+
+# Print results
+print(paste("Accuracy:", accuracy_tree))
+print(paste("Sensitivity:", sensitivity_tree))
+print(paste("Specificity:", specificity_tree))
+
+
+### PRUNING?
+plotcp(decision_tree_model)
+
+optimal_cp = decision_tree_model$cptable[which.min(decision_tree_model$cptable[, "xerror"]), "CP"]
+pruned_tree = prune(decision_tree_model, cp = optimal_cp)
+
+plot(pruned_tree)                
+text(pruned_tree, cex=0.7) 
+
+rpart.plot(pruned_tree, 
+           type = 3,                     # Display both node labels and probabilities
+           extra = 104,                  # Add details like class probabilities and percentages
+           under = TRUE,                 # Show percentages below the node
+           fallen.leaves = TRUE,         # Align leaf nodes
+           main = "Pruned Decision Tree for Acquisition")
+
+
+# Predict on test data
+pruned_predictions = predict(pruned_tree, test_acq, type = "class")
+
+# Generate confusion matrix and compute metrics
+pruned_conf_matrix = table(pruned_predictions, test_acq$acquisition)
+true_positive_prune = conf_matrix[2, 2]  # Correctly predicted "Yes" (or 1)
+true_negative_prune = conf_matrix[1, 1]  # Correctly predicted "No" (or 0)
+false_positive_prune = conf_matrix[2, 1]  # Incorrectly predicted "Yes" (or 1)
+false_negative_prune = conf_matrix[1, 2]  # Incorrectly predicted "No" (or 0)
+
+# Calculate metrics
+accuracy_tree2 = sum(diag(conf_matrix)) / sum(conf_matrix)
+sensitivity_tree2 = true_positive / (true_positive + false_negative)  # True Positive Rate
+specificity_tree2 = true_negative / (true_negative + false_positive)  # True Negative Rate
+
+# Print results
+print(paste("Accuracy:", accuracy_tree2))
+print(paste("Sensitivity:", sensitivity_tree2))
+print(paste("Specificity:", specificity_tree2))
 
 
 
