@@ -353,3 +353,49 @@ mae <- mean(abs(predictions - test_dur$duration))
 print(paste("RMSE: ", round(rmse,2)))
 print(paste("R-squared: ", round(r_squared,4)))
 print(paste("MAE: ", round(mae,2)))
+
+
+####### PDP PLOTS#######
+library("pdp")
+pdp_ret_exp_sq <- partial(rf_tune, pred.var = "ret_exp_sq", plot = TRUE,
+                       train = train_dur, main = "PDP for ret_exp_sq")
+
+#plot(pdp_ret_exp_sq)
+
+pdp_crossbuy <- partial(rf_tune, pred.var = "crossbuy", plot = TRUE,
+                          train = train_dur, main = "PDP for crossbuy")
+
+#plot(pdp_crossbuy)
+
+pdp_industry <- partial(rf_tune, pred.var = "industry", plot = TRUE,
+                        train = train_dur, main = "PDP for industry")
+
+#plot(pdp_industry)
+
+pdp_acq_exp_sq <- partial(rf_tune, pred.var = "acq_exp_sq", plot = TRUE,
+                        train = train_dur, main = "PDP for acq_exp_sq")
+
+#plot(pdp_acq_exp_sq)
+
+pdp_sow <- partial(rf_tune, pred.var = "sow", plot = TRUE,
+                          train = train_dur, main = "PDP for sow")
+
+#plot(pdp_sow)
+
+pdp_freq_sq <- partial(rf_tune, pred.var = "freq_sq", plot = TRUE,
+                   train = train_dur, main = "PDP for freq_sq")
+
+#plot(pdp_freq_sq)
+
+pdp_revenue <- partial(rf_tune, pred.var = "revenue", plot = TRUE,
+                   train = train_dur, main = "PDP for revenue")
+
+#plot(pdp_revenue)
+
+pdp_emp <- partial(rf_tune, pred.var = "employees", plot = TRUE,
+                       train = train_dur, main = "PDP for employees")
+
+#plot(pdp_emp)
+
+grid.arrange(pdp_emp, pdp_revenue, pdp_freq_sq, pdp_sow, pdp_acq_exp_sq, pdp_industry, pdp_crossbuy, pdp_ret_exp_sq, ncol = 2)
+
